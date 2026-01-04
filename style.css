@@ -1,0 +1,43 @@
+.session-item {
+  border-radius: 5px;
+  padding: 4px;
+  cursor: pointer;
+  display: block;
+  color: inherit !important;
+  text-decoration: none !important;
+  flex: 1;
+}
+
+.session-item:hover {
+  background-color: #ff4b4bb6;
+}
+
+#current_session {
+  background-color: #912b2bb6;
+}
+
+.session-item sup {
+  color: rgb(194, 194, 194);
+}
+
+.bin-icon:hover {
+  background-color: rgba(255, 75, 75, 0.1);
+}
+
+div[data-testid="stBottomBlockContainer"] {
+  padding: 1rem 1rem 1rem;
+}
+
+div[data-testid="stBottomBlockContainer"]::after {
+  content: "Made with ❤️ at IOMechs";
+  font-size: small;
+  position: relative;
+  top: 0.5rem;
+  left: calc(40% - 10px);
+}
+
+/* Hide chat input when agent is running */
+.stApp[data-teststate=running] .stChatInput textarea,
+.stApp[data-test-script-state=running] .stChatInput textarea {
+	display: none;
+}
