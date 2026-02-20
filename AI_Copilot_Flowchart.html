@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Co-pilot — System Flow</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:   #1B2A4A;
+    --blue:   #2E5FA3;
+    --teal:   #1A7A8A;
+    --green:  #1A7A4A;
+    --amber:  #B45309;
+    --red:    #9B1C1C;
+    --light:  #EAF1FB;
+    --lgrey:  #F5F7FA;
+    --mgrey:  #D0D7E3;
+    --white:  #FFFFFF;
+    --mid:    #374151;
+    --code:   #1E3A5F;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0D1B2E;
+    font-family: 'IBM Plex Sans', sans-serif;
+    color: var(--white);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* ── Header ── */
+  .page-header {
+    background: linear-gradient(135deg, #0D1B2E 0%, #1B2A4A 50%, #0D1B2E 100%);
+    border-bottom: 2px solid var(--blue);
+    padding: 28px 48px 24px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+  .page-header h1 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--white);
+    letter-spacing: 0.02em;
+  }
+  .page-header p {
+    font-size: 13px;
+    color: #7BA7D4;
+    font-family: 'IBM Plex Mono', monospace;
+    margin-top: 4px;
+  }
+  .badge {
+    background: var(--blue);
+    color: var(--white);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 3px;
+    letter-spacing: 0.08em;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* ── Canvas ── */
+  .canvas {
+    padding: 48px 40px 64px;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  /* ── Flow layout — 3 columns ── */
+  .flow-grid {
+    display: grid;
+    grid-template-columns: 1fr 20px 1fr 20px 1fr;
+    gap: 0;
+    align-items: start;
+  }
+
+  /* ── Lane labels ── */
+  .lane-header {
+    padding: 10px 16px;
+    border-radius: 4px 4px 0 0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-align: center;
+    margin-bottom: 0;
+  }
+  .lane-trigger  { background: var(--teal);  color: white; }
+  .lane-agent    { background: var(--blue);  color: white; }
+  .lane-output   { background: var(--navy);  color: white; }
+  .lane-divider  { /* spacer */ }
+
+  /* ── Lane body ── */
+  .lane-body {
+    border: 1.5px solid;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    padding: 20px 16px;
+    min-height: 900px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .lane-body.teal-lane  { border-color: var(--teal);  background: rgba(26,122,138,0.05); }
+  .lane-body.blue-lane  { border-color: var(--blue);  background: rgba(46,95,163,0.05); }
+  .lane-body.navy-lane  { border-color: #3A5A8A;      background: rgba(27,42,74,0.15); }
+
+  /* ── Nodes ── */
+  .node {
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    position: relative;
+    transition: box-shadow 0.2s;
+  }
+  .node:hover { box-shadow: 0 0 0 2px rgba(255,255,255,0.2); }
+  .node-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    font-family: 'IBM Plex Mono', monospace;
+    margin-bottom: 4px;
+    opacity: 0.7;
+  }
+  .node-title {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.3;
+    margin-bottom: 3px;
+  }
+  .node-detail {
+    font-size: 11px;
+    opacity: 0.75;
+    line-height: 1.4;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* Node colour variants */
+  .node-start   { background: var(--teal);   border-left: 4px solid #0FA8BC; }
+  .node-process { background: #1E3A6A;        border-left: 4px solid var(--blue); }
+  .node-gate    { background: #12283D;        border-left: 4px solid #4A90D9; border: 1.5px solid #2E5FA3; border-left: 4px solid #4A90D9; }
+  .node-parallel{ background: #0E2A3A;        border-left: 4px solid var(--teal); border: 1.5px solid var(--teal); border-left: 4px solid #0FBCD4; }
+  .node-llm     { background: #1A1A4A;        border-left: 4px solid #6B6BFF; }
+  .node-decision{ background: #2A1A0A;        border: 2px solid var(--amber); border-radius: 0; transform: none; }
+  .node-output  { background: #0A2030;        border-left: 4px solid #4A90D9; }
+  .node-jira    { background: #0D2744;        border-left: 4px solid var(--blue); }
+  .node-slack   { background: #1A1A35;        border-left: 4px solid #7B68EE; }
+  .node-audit   { background: #0A2A1A;        border-left: 4px solid var(--green); }
+  .node-error   { background: #2A0A0A;        border-left: 4px solid var(--red); }
+  .node-success { background: #0A2A14;        border-left: 4px solid var(--green); }
+  .node-stub    { background: #1A1A0A;        border-left: 4px solid #D4A017; border-style: dashed; }
+
+  /* Step number badges */
+  .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: 'IBM Plex Mono', monospace;
+    margin-right: 8px;
+    flex-shrink: 0;
+    vertical-align: middle;
+  }
+  .num-teal  { background: var(--teal);  color: white; }
+  .num-blue  { background: var(--blue);  color: white; }
+  .num-navy  { background: #3A5A8A;      color: white; }
+
+  /* ── Arrows within lanes ── */
+  .arrow-down {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 24px;
+    color: rgba(255,255,255,0.3);
+    font-size: 18px;
+    margin: 0 auto 0;
+  }
+  .arrow-label {
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: rgba(255,255,255,0.35);
+    text-align: center;
+    margin-bottom: 4px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Cross-lane connector arrows ── */
+  .connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding-top: 60px;
+    gap: 6px;
+  }
+  .connector-line {
+    width: 2px;
+    flex: 1;
+    max-height: 40px;
+    background: rgba(255,255,255,0.15);
+  }
+  .connector-arrow {
+    font-size: 14px;
+    color: rgba(255,255,255,0.3);
+  }
+  .connector-tag {
+    font-size: 9px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: rgba(255,255,255,0.3);
+    writing-mode: vertical-lr;
+    letter-spacing: 0.1em;
+    transform: rotate(180deg);
+  }
+
+  /* ── Parallel block ── */
+  .parallel-block {
+    border: 1.5px dashed rgba(26,122,138,0.6);
+    border-radius: 6px;
+    padding: 10px;
+    margin: 4px 0 8px;
+    background: rgba(26,122,138,0.05);
+  }
+  .parallel-label {
+    font-size: 9px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--teal);
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  .parallel-tools {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .tool-chip {
+    background: #0E2A3A;
+    border: 1px solid rgba(26,122,138,0.5);
+    border-radius: 4px;
+    padding: 7px 8px;
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: #7ECFDA;
+    line-height: 1.3;
+  }
+  .tool-chip .tool-name { font-weight: 700; font-size: 10px; color: #A0E0EA; }
+  .tool-chip .tool-desc { font-size: 9px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+
+  /* ── Decision diamond ── */
+  .diamond-wrap {
+    display: flex;
+    justify-content: center;
+    margin: 4px 0;
+    position: relative;
+  }
+  .diamond {
+    width: 120px;
+    height: 60px;
+    background: #2A1A0A;
+    border: 2px solid var(--amber);
+    transform: perspective(400px) rotateX(10deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border-radius: 4px;
+    position: relative;
+  }
+  .diamond::before, .diamond::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+  }
+  .diamond::before { top: -9px; border-bottom: 9px solid var(--amber); }
+  .diamond::after  { bottom: -9px; border-top: 9px solid var(--amber); }
+  .diamond-text {
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'IBM Plex Mono', monospace;
+    color: #FBBF24;
+    line-height: 1.2;
+    padding: 4px;
+  }
+  .diamond-yes {
+    position: absolute;
+    right: -52px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 9px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--green);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .diamond-no {
+    position: absolute;
+    left: -42px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 9px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--red);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex-direction: row-reverse;
+  }
+
+  /* ── Schema block ── */
+  .schema-block {
+    border: 1px solid rgba(46,95,163,0.5);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 6px 0;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .schema-row {
+    display: flex;
+    align-items: center;
+    padding: 5px 10px;
+    font-size: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .schema-row:last-child { border-bottom: none; }
+  .schema-row.header { background: rgba(46,95,163,0.3); font-weight: 700; color: #A8C4E0; }
+  .schema-row.blk1 { background: rgba(26,122,74,0.1); }
+  .schema-row.blk2 { background: rgba(26,122,138,0.1); }
+  .schema-row.blk3 { background: rgba(46,95,163,0.1); }
+  .schema-row.blk4 { background: rgba(180,83,9,0.1); }
+  .schema-row.blk5 { background: rgba(155,28,28,0.15); }
+  .schema-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .schema-field { color: rgba(255,255,255,0.9); flex: 1; }
+  .schema-type  { color: rgba(255,255,255,0.35); font-size: 9px; margin-left: 6px; }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 40px;
+    padding: 16px 24px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 6px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.6);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+  }
+
+  /* ── Timeout / fail path ── */
+  .fail-path {
+    border: 1px dashed rgba(155,28,28,0.5);
+    border-radius: 4px;
+    padding: 8px 10px;
+    margin: 4px 0;
+    background: rgba(155,28,28,0.06);
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: #F87171;
+  }
+  .fail-path .fail-label {
+    font-size: 9px;
+    color: var(--red);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-bottom: 3px;
+  }
+
+  /* ── Confidence meter ── */
+  .conf-meter {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 4px;
+    padding: 8px 10px;
+    margin: 6px 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+  }
+  .conf-bar-bg {
+    height: 8px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+    margin: 6px 0 4px;
+    overflow: hidden;
+    display: flex;
+  }
+  .conf-bar-seg { height: 100%; }
+  .conf-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: rgba(255,255,255,0.35);
+    margin-top: 2px;
+  }
+
+  /* ── Section connector row ── */
+  .section-row {
+    display: grid;
+    grid-template-columns: 1fr 20px 1fr 20px 1fr;
+    margin: 0;
+  }
+
+  .print-note {
+    text-align: center;
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: rgba(255,255,255,0.2);
+    margin-top: 32px;
+    padding-bottom: 20px;
+  }
+
+  @media print {
+    body { background: white; color: black; }
+    .page-header { background: #1B2A4A; }
+    .canvas { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Header ───────────────────────────────────────────────── -->
+<div class="page-header">
+  <div>
+    <h1>AI Co-pilot for CIB Incident Support — System Flow</h1>
+    <p>Event-Driven Agentic Orchestrator &nbsp;·&nbsp; Google ADK + MCP + Tachyon &nbsp;·&nbsp; v1.0 POC</p>
+  </div>
+  <div class="badge">DESIGN COMPLETE</div>
+</div>
+
+<!-- ── Main Canvas ──────────────────────────────────────────── -->
+<div class="canvas">
+
+  <!-- Lane headers -->
+  <div class="flow-grid" style="margin-bottom:0; align-items:end;">
+    <div class="lane-header lane-trigger">TOOL LAYER &nbsp;/&nbsp; TRIGGER</div>
+    <div></div>
+    <div class="lane-header lane-agent">AGENT LAYER &nbsp;(Google ADK)</div>
+    <div></div>
+    <div class="lane-header lane-output">OUTPUT LAYER</div>
+  </div>
+
+  <!-- Lane bodies -->
+  <div class="flow-grid" style="align-items:stretch;">
+
+    <!-- ══════════════════════════ LANE 1 — TOOL/TRIGGER ══════════════════════════ -->
+    <div class="lane-body teal-lane">
+
+      <!-- Step 1: Customer Email -->
+      <div class="node node-start">
+        <div class="node-label">EVENT SOURCE</div>
+        <div class="node-title"><span class="step-num num-teal">1</span>Customer Email / Alert</div>
+        <div class="node-detail">Incident reported via support channel</div>
+      </div>
+
+      <div class="arrow-down">↓</div>
+
+      <!-- Step 2: Jira Ticket -->
+      <div class="node node-process">
+        <div class="node-label">JIRA</div>
+        <div class="node-title"><span class="step-num num-teal">2</span>P1 / P2 Ticket Created</div>
+        <div class="node-detail">Issue key assigned &nbsp;·&nbsp; priority set &nbsp;·&nbsp; app_id tagged</div>
+      </div>
+
+      <div class="arrow-down">↓</div>
+
+      <!-- Step 3: Webhook fires -->
+      <div class="node node-gate">
+        <div class="node-label">WEBHOOK</div>
+        <div class="node-title"><span class="step-num num-teal">3</span>Jira Webhook Fires</div>
+        <div class="node-detail">POST → Tachyon Gateway<br>HMAC-SHA256 signed payload</div>
+      </div>
+
+      <div class="arrow-down">↓</div>
+
+      <!-- Step 4: Tachyon boundary -->
+      <div class="node node-parallel">
+        <div class="node-label">TACHYON SECURITY BOUNDARY</div>
+        <div class="node-title"><span class="step-num num-teal">4</span>Gateway Processing</div>
+        <div class="node-detail" style="line-height:1.6">
+          ✦ HMAC signature verified<br>
+          ✦ PII stripped from ticket body<br>
+          ✦ Rate limit enforced (P1: unlimited)<br>
+          ✦ tachyon_request_id injected<br>
+          ✦ Sanitised envelope forwarded
+        </div>
+      </div>
+
+      <div style="height: 32px;"></div>
+
+      <!-- Stub layer note -->
+      <div class="node node-stub" style="margin-top:auto;">
+        <div class="node-label">POC — STUB LAYER</div>
+        <div class="node-title" style="font-size:12px; color:#D4A017;">Live tools not yet connected</div>
+        <div class="node-detail" style="margin-top:6px;">
+          BASE_URL swap = stub &lt;-&gt; live<br>
+          Named scenarios in stub library:
+        </div>
+        <div style="margin-top:8px; display:flex; flex-direction:column; gap:4px;">
+          <div style="font-size:10px; font-family:'IBM Plex Mono'; background:rgba(255,255,255,0.05); padding:4px 8px; border-radius:3px; color:#F5D47A;">db_connection_spike</div>
+          <div style="font-size:10px; font-family:'IBM Plex Mono'; background:rgba(255,255,255,0.05); padding:4px 8px; border-radius:3px; color:#F5D47A;">pod_crashloop_no_deploy</div>
+          <div style="font-size:10px; font-family:'IBM Plex Mono'; background:rgba(255,255,255,0.05); padding:4px 8px; border-radius:3px; color:#F5D47A;">high_confidence_self_heal</div>
+          <div style="font-size:10px; font-family:'IBM Plex Mono'; background:rgba(255,255,255,0.05); padding:4px 8px; border-radius:3px; color:#F5D47A;">tool_timeout_partial</div>
+        </div>
+      </div>
+
+    </div><!-- end lane 1 -->
+
+    <!-- ══════════ CONNECTOR 1→2 ══════════ -->
+    <div style="display:flex; flex-direction:column; align-items:center; padding-top:280px; gap:4px;">
+      <div style="width:2px; height:40px; background:rgba(255,255,255,0.15);"></div>
+      <div style="font-size:12px; color:rgba(255,255,255,0.3);">→</div>
+      <div style="font-size:9px; font-family:'IBM Plex Mono'; color:rgba(255,255,255,0.25); writing-mode:vertical-lr; transform:rotate(180deg); letter-spacing:0.08em; margin-top:4px;">sanitised envelope</div>
+    </div>
+
+    <!-- ══════════════════════════ LANE 2 — AGENT ══════════════════════════ -->
+    <div class="lane-body blue-lane">
+
+      <!-- Step 5: ADK receives -->
+      <div class="node node-gate">
+        <div class="node-label">ADK ENTRY POINT</div>
+        <div class="node-title"><span class="step-num num-blue">5</span>Receive &amp; Validate Envelope</div>
+        <div class="node-detail">
+          Deserialise event &nbsp;·&nbsp; check priority gate (P1/P2 only)<br>
+          Log receipt with tachyon_request_id
+        </div>
+      </div>
+
+      <div class="arrow-down">↓</div>
+
+      <!-- Step 6: Fan-out -->
+      <div class="node node-process" style="padding-bottom:4px;">
+        <div class="node-label">FAN-OUT &nbsp;—&nbsp; ALL 4 CALLS FIRE SIMULTANEOUSLY</div>
+        <div class="node-title" style="margin-bottom:8px;"><span class="step-num num-blue">6</span>Parallel MCP Tool Calls</div>
+        <div class="parallel-block">
+          <div class="parallel-label">PARALLEL EXECUTION — per-tool configurable timeout</div>
+          <div class="parallel-tools">
+            <div class="tool-chip">
+              <div class="tool-name">get_splunk_logs</div>
+              <div class="tool-desc">Current 15-min window<br>Timeout: SPLUNK_TIMEOUT_MS</div>
+            </div>
+            <div class="tool-chip">
+              <div class="tool-name">get_splunk_baseline</div>
+              <div class="tool-desc">Same window, 24h ago<br>Timeout: SPLUNK_BASELINE_MS</div>
+            </div>
+            <div class="tool-chip">
+              <div class="tool-name">check_ocp_status</div>
+              <div class="tool-desc">Namespace &amp; pod health<br>Timeout: OCP_TIMEOUT_MS</div>
+            </div>
+            <div class="tool-chip">
+              <div class="tool-name">get_last_prod_change</div>
+              <div class="tool-desc">Last deploy + delta mins<br>Timeout: PROD_CHANGE_MS</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow-down">↓</div>
+
+      <!-- Step 7: Collect / fail-fast -->
+      <div class="node node-process">
+        <div class="node-label">COLLECT — FAIL FAST</div>
+        <div class="node-title"><span class="step-num num-blue">7</span>Await Responses</div>
+        <div class="node-detail" style="margin-bottom:6px;">Tools respond within timeout window</div>
+        <div class="fail-path">
+          <div class="fail-label">ON TIMEOUT / ERROR</div>
+          Mark tool as FAILED &nbsp;·&nbsp; data = null<br>
+          Deduct 10 pts from confidence score<br>
+          Note gap in audit block &nbsp;·&nbsp; proceed
+        </div>
+      </div>
+
+      <div class="arrow-down">↓</div>
+
+      <!-- Step 8: Score prep -->
+      <div class="node node-process">
+        <div class="node-label">PRE-SYNTHESIS SCORING</div>
+        <div class="node-title"><span class="step-num num-blue">8</span>Compute Confidence Signals</div>
+        <div class="conf-meter">
+          <div style="color:rgba(255,255,255,0.6); margin-bottom:2px;">Confidence Score (max 100)</div>
+          <div class="conf-bar-bg">
+            <div class="conf-bar-seg" style="width:40%; background:#1A7A4A;"></div>
+            <div class="conf-bar-seg" style="width:40%; background:#2E5FA3;"></div>
+            <div class="conf-bar-seg" style="width:20%; background:#7B68EE;"></div>
+          </div>
+          <div class="conf-labels">
+            <span style="color:#4ABA7A;">completeness ×40</span>
+            <span style="color:#6B9FD4;">consistency ×40</span>
+            <span style="color:#9E9EFF;">pattern ×20</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow-down">↓</div>
+
+      <!-- Step 9: LLM synthesis -->
+      <div class="node node-llm">
+        <div class="node-label">LLM SYNTHESIS &nbsp;—&nbsp; VERSIONED PROMPT v1.0.0</div>
+        <div class="node-title"><span class="step-num num-blue">9</span>Populate 5-Block Schema</div>
+        <div class="node-detail" style="margin-bottom:8px;">Model-agnostic via ADK abstraction layer</div>
+        <div class="schema-block">
+          <div class="schema-row header"><span class="schema-dot" style="background:#A8C4E0;"></span><span class="schema-field">Block</span><span class="schema-type">fields</span></div>
+          <div class="schema-row blk1"><span class="schema-dot" style="background:#4ABA7A;"></span><span class="schema-field">Identity</span><span class="schema-type">incident_id, jira_key, triage_duration_ms</span></div>
+          <div class="schema-row blk2"><span class="schema-dot" style="background:#7ECFDA;"></span><span class="schema-field">Situation (L1)</span><span class="schema-type">hypothesis, confidence, escalation</span></div>
+          <div class="schema-row blk3"><span class="schema-dot" style="background:#6B9FD4;"></span><span class="schema-field">Evidence (L2)</span><span class="schema-type">splunk, ocp, prod_change narratives</span></div>
+          <div class="schema-row blk4"><span class="schema-dot" style="background:#FBBF24;"></span><span class="schema-field">Baseline A-B</span><span class="schema-type">delta%, anomaly_classification</span></div>
+          <div class="schema-row blk5"><span class="schema-dot" style="background:#F87171;"></span><span class="schema-field">Audit</span><span class="schema-type">tools, latencies, model, prompt_version</span></div>
+        </div>
+      </div>
+
+      <div class="arrow-down">↓</div>
+
+      <!-- Step 10: Escalation decision -->
+      <div class="node node-decision" style="margin-bottom:6px;">
+        <div class="node-label" style="color:#FBBF24;">ESCALATION DECISION GATE</div>
+        <div class="node-title" style="color:#FBBF24;"><span class="step-num" style="background:var(--amber); color:white;">10</span>Confidence vs Threshold</div>
+        <div class="diamond-wrap" style="margin: 10px 0;">
+          <div class="diamond">
+            <div class="diamond-text">score &lt;<br>THRESHOLD?</div>
+            <div class="diamond-yes">YES →<br><span style="color:var(--green); font-weight:700;">ESCALATE</span></div>
+            <div class="diamond-no">← NO<br><span style="color:#60A5FA; font-weight:700;">L1 RESOLVE</span></div>
+          </div>
+        </div>
+        <div class="node-detail" style="color:rgba(255,196,0,0.6);">
+          CONFIDENCE_THRESHOLD = env var (no hardcoded default)<br>
+          Owner: named business stakeholder
+        </div>
+      </div>
+
+    </div><!-- end lane 2 -->
+
+    <!-- ══════════ CONNECTOR 2→3 ══════════ -->
+    <div style="display:flex; flex-direction:column; align-items:center; padding-top:400px; gap:4px;">
+      <div style="font-size:9px; font-family:'IBM Plex Mono'; color:rgba(255,255,255,0.25); writing-mode:vertical-lr; transform:rotate(180deg); letter-spacing:0.08em; margin-bottom:4px;">publish output</div>
+      <div style="font-size:12px; color:rgba(255,255,255,0.3);">→</div>
+      <div style="width:2px; height:40px; background:rgba(255,255,255,0.15);"></div>
+    </div>
+
+    <!-- ══════════════════════════ LANE 3 — OUTPUT ══════════════════════════ -->
+    <div class="lane-body navy-lane">
+
+      <!-- Step 11: Format Jira comment -->
+      <div class="node node-jira">
+        <div class="node-label">SYSTEM OF RECORD</div>
+        <div class="node-title"><span class="step-num num-navy">11</span>Jira Comment — Full Triage</div>
+        <div class="node-detail" style="margin-bottom:8px;">5-block schema rendered as structured Markdown</div>
+        <div style="font-family:'IBM Plex Mono'; font-size:10px; background:rgba(0,0,0,0.3); border-radius:4px; padding:8px 10px; line-height:1.7; color:rgba(255,255,255,0.65);">
+          <span style="color:#F87171;">## AI Triage Summary [ESCALATE]</span><br>
+          <span style="color:#60A5FA;">**Confidence:** 42/100 | P1</span><br>
+          <span style="color:#4ABA7A;">### Situation</span><br>
+          <span>Hypothesis: DB pool exhaustion...</span><br>
+          <span style="color:#D0D7E3;">&lt;details&gt; Evidence &lt;/details&gt;</span><br>
+          <span style="color:#D0D7E3;">&lt;details&gt; Baseline A-B &lt;/details&gt;</span><br>
+          <span style="color:#D0D7E3;">&lt;details&gt; Audit Trail &lt;/details&gt;</span>
+        </div>
+      </div>
+
+      <div class="arrow-down">↓</div>
+
+      <!-- Step 12: Slack/Teams -->
+      <div class="node node-slack">
+        <div class="node-label">INTERRUPTION LAYER</div>
+        <div class="node-title"><span class="step-num num-navy">12</span>Slack / Teams Notification</div>
+        <div class="node-detail" style="margin-bottom:8px;">Single channel &nbsp;·&nbsp; format by priority</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:10px; font-family:'IBM Plex Mono';">
+          <div style="background:rgba(155,28,28,0.3); border:1px solid rgba(248,113,113,0.4); border-radius:3px; padding:6px;">
+            <div style="color:#F87171; font-weight:700; margin-bottom:3px;">P1 — Dense</div>
+            <div style="color:rgba(255,255,255,0.55); line-height:1.5;">App · Ticket · Score<br>Hypothesis<br>Escalation reason<br>Direct link →</div>
+          </div>
+          <div style="background:rgba(180,83,9,0.2); border:1px solid rgba(251,191,36,0.3); border-radius:3px; padding:6px;">
+            <div style="color:#FCD34D; font-weight:700; margin-bottom:3px;">P2 — Light</div>
+            <div style="color:rgba(255,255,255,0.55); line-height:1.5;">App · Ticket<br>Hypothesis<br>&nbsp;<br>Link →</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow-down">↓</div>
+
+      <!-- Step 13: Audit log -->
+      <div class="node node-audit">
+        <div class="node-label">COMPLIANCE</div>
+        <div class="node-title"><span class="step-num num-navy">13</span>Audit Log Written</div>
+        <div class="node-detail" style="line-height:1.7;">
+          ✦ All tachyon_request_ids stored<br>
+          ✦ Tool latencies recorded (ms)<br>
+          ✦ Prompt version logged (v1.0.0)<br>
+          ✦ Classification: INTERNAL — NO PII<br>
+          ✦ Full run reconstructable from logs
+        </div>
+      </div>
+
+      <div class="arrow-down">↓</div>
+
+      <!-- Three audience outcomes -->
+      <div style="font-size:10px; font-family:'IBM Plex Mono'; color:rgba(255,255,255,0.35); text-align:center; margin:4px 0 8px; letter-spacing:0.06em;">AUDIENCE OUTCOMES</div>
+      <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:8px;">
+        <div style="background:rgba(46,95,163,0.2); border:1px solid rgba(46,95,163,0.4); border-radius:4px; padding:8px 10px;">
+          <div style="font-size:10px; font-weight:700; color:#6B9FD4; font-family:'IBM Plex Mono'; margin-bottom:3px;">L1 ENGINEER</div>
+          <div style="font-size:11px; color:rgba(255,255,255,0.7);">Reads Situation block in &lt;10s. Clear yes/no on escalation. Time to triage: &lt;30s.</div>
+        </div>
+        <div style="background:rgba(26,122,138,0.15); border:1px solid rgba(26,122,138,0.4); border-radius:4px; padding:8px 10px;">
+          <div style="font-size:10px; font-weight:700; color:#7ECFDA; font-family:'IBM Plex Mono'; margin-bottom:3px;">APP DEV / L2</div>
+          <div style="font-size:11px; color:rgba(255,255,255,0.7);">Expands Evidence block. Validates reasoning chain. Trusts the escalation because they can see why.</div>
+        </div>
+        <div style="background:rgba(27,42,74,0.4); border:1px solid rgba(100,130,180,0.3); border-radius:4px; padding:8px 10px;">
+          <div style="font-size:10px; font-weight:700; color:#A8C4E0; font-family:'IBM Plex Mono'; margin-bottom:3px;">LEADERSHIP</div>
+          <div style="font-size:11px; color:rgba(255,255,255,0.7);">Sees triage_duration_ms. Before: 30-45 min. After: &lt;30s. Escalation rate tracked over time.</div>
+        </div>
+      </div>
+
+      <!-- Target KPIs -->
+      <div style="margin-top:auto; background:rgba(27,42,74,0.6); border:1px solid rgba(100,130,180,0.25); border-radius:6px; padding:12px; display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div style="text-align:center;">
+          <div style="font-size:22px; font-weight:700; color:#7ECFDA; font-family:'IBM Plex Mono';">&lt;30s</div>
+          <div style="font-size:10px; color:rgba(255,255,255,0.4); margin-top:2px;">Triage Target</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:22px; font-weight:700; color:#4ABA7A; font-family:'IBM Plex Mono';">-60%</div>
+          <div style="font-size:10px; color:rgba(255,255,255,0.4); margin-top:2px;">Escalations</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:22px; font-weight:700; color:#FBBF24; font-family:'IBM Plex Mono';">100%</div>
+          <div style="font-size:10px; color:rgba(255,255,255,0.4); margin-top:2px;">Audit Coverage</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:22px; font-weight:700; color:#A8C4E0; font-family:'IBM Plex Mono';">2-4w</div>
+          <div style="font-size:10px; color:rgba(255,255,255,0.4); margin-top:2px;">POC Timeline</div>
+        </div>
+      </div>
+
+    </div><!-- end lane 3 -->
+
+  </div><!-- end flow-grid -->
+
+  <!-- ── Legend ───────────────────────────────── -->
+  <div class="legend">
+    <div style="font-size:11px; font-weight:700; color:rgba(255,255,255,0.5); font-family:'IBM Plex Mono'; margin-right:8px; align-self:center;">LEGEND</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--teal);"></div>Trigger / Tachyon boundary</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#1E3A6A; border:1px solid var(--blue);"></div>ADK process step</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#1A1A4A; border:1px solid #6B6BFF;"></div>LLM synthesis</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#2A1A0A; border:1px solid var(--amber);"></div>Decision gate</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--red); opacity:0.6;"></div>Fail / timeout path</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#1A1A0A; border:1px dashed #D4A017;"></div>POC stub layer</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#0A2A1A; border:1px solid var(--green);"></div>Audit / compliance</div>
+  </div>
+
+  <div class="print-note">AI Co-pilot for CIB Incident Support &nbsp;·&nbsp; Technical Design Document v1.0 &nbsp;·&nbsp; Q1 2026 &nbsp;·&nbsp; INTERNAL</div>
+
+</div><!-- end canvas -->
+
+</body>
+</html>
